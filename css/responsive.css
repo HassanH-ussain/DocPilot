@@ -83,8 +83,13 @@
         align-self: flex-end;
     }
     
+    .modal {
+        padding: 15px;
+    }
+    
     .modal-content {
-        width: 95%;
+        width: min(90vw, 600px);
+        max-height: min(90vh, 700px);
         padding: var(--spacing-lg);
     }
     
@@ -176,10 +181,14 @@
         padding: var(--spacing-sm);
     }
     
+    .modal {
+        padding: 10px;
+    }
+    
     .modal-content {
-        width: 95%;
-        max-height: 85vh;
-        padding: var(--spacing-md);
+        width: min(95vw, 600px);
+        max-height: min(95vh, 700px);
+        padding: var(--spacing-lg);
     }
     
     .modal h2 {
@@ -212,6 +221,13 @@
     
     .modal-actions .btn {
         max-width: none;
+    }
+    
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        font-size: 16px; /* Prevents zoom on iOS */
+        padding: 12px;
     }
 }
 
@@ -281,10 +297,24 @@
         padding: var(--spacing-lg);
     }
     
+    .modal {
+        padding: 8px;
+    }
+    
     .modal-content {
-        width: 98%;
-        max-height: 90vh;
+        width: min(96vw, 500px);
+        max-height: min(96vh, 600px);
         padding: var(--spacing-md);
+    }
+    
+    .modal-actions {
+        flex-direction: column-reverse;
+        gap: var(--spacing-xs);
+    }
+    
+    .modal-actions .btn {
+        width: 100%;
+        margin: 0;
     }
     
     h2 {
@@ -458,15 +488,18 @@
         padding: 4px 8px;
     }
     
+    .modal {
+        padding: 5px;
+    }
+    
     .modal-content {
-        width: 100%;
-        height: 100vh;
-        max-height: none;
+        width: 98vw;
+        max-height: 98vh;
         padding: var(--spacing-sm);
-        border-radius: 0;
-        top: 0;
-        left: 0;
-        transform: none;
+        border-radius: var(--radius-lg);
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
     }
     
     .modal h2 {
@@ -491,14 +524,20 @@
     .form-group input,
     .form-group select,
     .form-group textarea {
-        padding: 8px;
-        font-size: var(--font-size-sm);
+        padding: 10px;
+        font-size: 16px; /* Prevents zoom on iOS */
     }
     
     .modal-actions {
         margin-top: var(--spacing-sm);
         padding-top: var(--spacing-sm);
         gap: var(--spacing-xs);
+        flex-direction: column-reverse;
+    }
+    
+    .modal-actions .btn {
+        width: 100%;
+        margin: 0;
     }
     
     .recent-activity-section {

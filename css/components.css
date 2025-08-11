@@ -5,7 +5,7 @@
 /* Form Styles */
 .form-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: var(--spacing-lg);
     margin-bottom: 25px;
 }
@@ -433,6 +433,8 @@
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
     animation: modalFadeIn var(--transition-smooth) ease-out;
+    padding: 20px;
+    box-sizing: border-box;
 }
 
 @keyframes modalFadeIn {
@@ -452,12 +454,12 @@
     background: white;
     padding: var(--spacing-xl);
     border-radius: var(--radius-xl);
-    width: 90%;
-    max-width: 500px;
-    max-height: 80vh;
+    width: min(90vw, 700px);
+    max-height: min(90vh, 800px);
     overflow-y: auto;
     box-shadow: var(--shadow-lg);
     animation: modalSlideIn var(--transition-smooth) ease-out;
+    margin: auto;
 }
 
 @keyframes modalSlideIn {
@@ -506,6 +508,7 @@
     margin-top: var(--spacing-lg);
     padding-top: var(--spacing-lg);
     border-top: 1px solid var(--border-color);
+    flex-wrap: wrap;
 }
 
 /* Recent Activity Section */
