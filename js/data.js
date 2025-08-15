@@ -1,6 +1,6 @@
 /**
- * Physician Dashboard - Data Management
- * Handles all data operations and sample data initialization
+ * Physician Dashboard - Data Management with localStorage Persistence
+ * Handles all data operations and sample data initialization with persistent storage
  */
 
 // Global data arrays
@@ -12,18 +12,86 @@ let files = [];
 const DataManager = {
     
     /**
-     * Initialize the application with sample data
+     * Initialize the application with persistent data
      */
     init() {
-        this.loadSampleData();
+        this.loadDataFromStorage();
         this.setupDataValidation();
     },
     
     /**
-     * Load sample data for demonstration
+     * Load data from localStorage or initialize with sample data
+     */
+    loadDataFromStorage() {
+        try {
+            // Try to load existing data from localStorage
+            const storedPatients = localStorage.getItem(APP_CONFIG.storageKeys.patients);
+            const storedExaminations = localStorage.getItem(APP_CONFIG.storageKeys.examinations);
+            const storedFiles = localStorage.getItem(APP_CONFIG.storageKeys.files);
+            
+            if (storedPatients) {
+                patients = JSON.parse(storedPatients);
+                console.log(`Loaded ${patients.length} patients from localStorage`);
+            } else {
+                this.loadSamplePatients();
+                this.saveDataToStorage();
+            }
+            
+            if (storedExaminations) {
+                examinations = JSON.parse(storedExaminations);
+                console.log(`Loaded ${examinations.length} examinations from localStorage`);
+            } else {
+                this.loadSampleExaminations();
+                this.saveDataToStorage();
+            }
+            
+            if (storedFiles) {
+                files = JSON.parse(storedFiles);
+                console.log(`Loaded ${files.length} files from localStorage`);
+            } else {
+                this.loadSampleFiles();
+                this.saveDataToStorage();
+            }
+            
+        } catch (error) {
+            console.error('Error loading data from localStorage:', error);
+            // Fallback to sample data if localStorage fails
+            this.loadSampleData();
+        }
+    },
+    
+    /**
+     * Save all data to localStorage
+     */
+    saveDataToStorage() {
+        try {
+            localStorage.setItem(APP_CONFIG.storageKeys.patients, JSON.stringify(patients));
+            localStorage.setItem(APP_CONFIG.storageKeys.examinations, JSON.stringify(examinations));
+            localStorage.setItem(APP_CONFIG.storageKeys.files, JSON.stringify(files));
+            console.log('Data saved to localStorage successfully');
+        } catch (error) {
+            console.error('Error saving data to localStorage:', error);
+            // Show user notification about storage error
+            if (window.Utils) {
+                Utils.showNotification('Failed to save data. Changes may not persist.', 'warning');
+            }
+        }
+    },
+    
+    /**
+     * Load sample data for demonstration (fallback)
      */
     loadSampleData() {
-        // Sample patients with realistic medical data
+        this.loadSamplePatients();
+        this.loadSampleExaminations();
+        this.loadSampleFiles();
+        console.log('Sample data loaded successfully');
+    },
+    
+    /**
+     * Load sample patients
+     */
+    loadSamplePatients() {
         patients = [
             {
                 id: 1,
@@ -86,8 +154,12 @@ const DataManager = {
                 status: 'active'
             }
         ];
-
-        // Sample examinations
+    },
+    
+    /**
+     * Load sample examinations
+     */
+    loadSampleExaminations() {
         examinations = [
             {
                 id: 1,
@@ -147,8 +219,12 @@ const DataManager = {
                 status: 'completed'
             }
         ];
-
-        // Sample files
+    },
+    
+    /**
+     * Load sample files
+     */
+    loadSampleFiles() {
         files = [
             {
                 id: 1,
@@ -199,8 +275,6 @@ const DataManager = {
                 tags: ['ekg', 'cardiac', 'heart', 'rhythm']
             }
         ];
-
-        console.log('Sample data loaded successfully');
     },
 
     /**
@@ -236,6 +310,7 @@ const DataManager = {
             status: 'active'
         };
         patients.push(newPatient);
+        this.saveDataToStorage(); // Save to localStorage
         return newPatient;
     },
 
@@ -246,6 +321,7 @@ const DataManager = {
         const index = patients.findIndex(patient => patient.id === id);
         if (index !== -1) {
             patients[index] = { ...patients[index], ...patientData };
+            this.saveDataToStorage(); // Save to localStorage
             return patients[index];
         }
         return null;
@@ -261,6 +337,7 @@ const DataManager = {
             // Also delete related examinations and files
             examinations = examinations.filter(exam => exam.patientId !== id);
             files = files.filter(file => file.patientId !== id);
+            this.saveDataToStorage(); // Save to localStorage
             return deletedPatient;
         }
         return null;
@@ -290,6 +367,14 @@ const DataManager = {
             status: 'completed'
         };
         examinations.push(newExamination);
+        
+        // Update patient's last visit date
+        const patient = this.getPatientById(examinationData.patientId);
+        if (patient) {
+            this.updatePatient(patient.id, { lastVisit: examinationData.date });
+        }
+        
+        this.saveDataToStorage(); // Save to localStorage
         return newExamination;
     },
 
@@ -318,6 +403,7 @@ const DataManager = {
             uploadedBy: APP_CONFIG.doctor.name
         };
         files.push(newFile);
+        this.saveDataToStorage(); // Save to localStorage
         return newFile;
     },
 
@@ -327,7 +413,9 @@ const DataManager = {
     deleteFile(id) {
         const index = files.findIndex(file => file.id === id);
         if (index !== -1) {
-            return files.splice(index, 1)[0];
+            const deletedFile = files.splice(index, 1)[0];
+            this.saveDataToStorage(); // Save to localStorage
+            return deletedFile;
         }
         return null;
     },
@@ -408,13 +496,101 @@ const DataManager = {
     },
 
     /**
+     * Import data from backup
+     */
+    importData(jsonData) {
+        try {
+            const data = JSON.parse(jsonData);
+            
+            if (data.patients) {
+                patients = data.patients;
+            }
+            if (data.examinations) {
+                examinations = data.examinations;
+            }
+            if (data.files) {
+                files = data.files;
+            }
+            
+            this.saveDataToStorage();
+            console.log('Data imported successfully');
+            return true;
+        } catch (error) {
+            console.error('Error importing data:', error);
+            return false;
+        }
+    },
+
+    /**
      * Clear all data
      */
     clearAllData() {
         patients = [];
         examinations = [];
         files = [];
+        this.saveDataToStorage(); // Clear localStorage as well
         console.log('All data cleared');
+    },
+
+    /**
+     * Get storage usage statistics
+     */
+    getStorageStats() {
+        if (!localStorage) return null;
+        
+        try {
+            const patientData = localStorage.getItem(APP_CONFIG.storageKeys.patients);
+            const examData = localStorage.getItem(APP_CONFIG.storageKeys.examinations);
+            const fileData = localStorage.getItem(APP_CONFIG.storageKeys.files);
+            
+            const totalSize = (patientData?.length || 0) + 
+                             (examData?.length || 0) + 
+                             (fileData?.length || 0);
+            
+            return {
+                totalSizeBytes: totalSize,
+                totalSizeKB: Math.round(totalSize / 1024),
+                patientsCount: patients.length,
+                examinationsCount: examinations.length,
+                filesCount: files.length,
+                lastSaved: localStorage.getItem('lastSaveTime') || 'Unknown'
+            };
+        } catch (error) {
+            console.error('Error getting storage stats:', error);
+            return null;
+        }
+    },
+
+    /**
+     * Backup data to file
+     */
+    backupData() {
+        const backup = {
+            patients,
+            examinations,
+            files,
+            backupDate: new Date().toISOString(),
+            version: APP_CONFIG.version,
+            metadata: this.getStorageStats()
+        };
+        
+        const dataStr = JSON.stringify(backup, null, 2);
+        const filename = `physician_dashboard_backup_${new Date().toISOString().split('T')[0]}.json`;
+        
+        // Create download link
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        if (window.Utils) {
+            Utils.showNotification('Data backup downloaded successfully', 'success');
+        }
     }
 };
 
