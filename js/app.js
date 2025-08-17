@@ -1,6 +1,6 @@
 /**
- * Physician Dashboard - Main Application Controller
- * Coordinates all modules and handles global application logic
+ * Physician Dashboard - Main Application Controller (Updated with Authentication)
+ * Coordinates all modules and handles global application logic with authentication
  */
 
 const App = {
@@ -17,7 +17,8 @@ const App = {
         ExaminationManager: null,
         FileManager: null,
         DashboardManager: null,
-        Utils: null
+        Utils: null,
+        AuthManager: null
     },
     
     /**
@@ -40,7 +41,15 @@ const App = {
             // Wait for all modules to be available
             await this.waitForModules();
             
-            // Initialize modules in order
+            // Check authentication first
+            const isAuthenticated = await this.checkAuthentication();
+            if (!isAuthenticated) {
+                // Redirect to login if not authenticated
+                this.redirectToLogin();
+                return;
+            }
+            
+            // Initialize modules in order (only if authenticated)
             await this.initializeModules();
             
             // Set up global event listeners
@@ -55,6 +64,9 @@ const App = {
             // Show welcome message for first time users
             this.checkFirstTimeUser();
             
+            // Update header with user info
+            this.updateUserInterface();
+            
             // Mark as initialized
             this.isInitialized = true;
             
@@ -63,12 +75,134 @@ const App = {
             
             // Show success notification
             setTimeout(() => {
-                Utils.showNotification('Physician Dashboard loaded successfully', 'success', 3000);
+                const userName = AuthManager.getUserDisplayName();
+                Utils.showNotification(`Welcome back, ${userName}!`, 'success', 3000);
             }, 500);
             
         } catch (error) {
             console.error('Failed to initialize application:', error);
             this.handleInitializationError(error);
+        }
+    },
+    
+    /**
+     * Check authentication status
+     * @returns {Promise<boolean>} Is user authenticated
+     */
+    async checkAuthentication() {
+        try {
+            // If AuthManager is available, check authentication
+            if (window.AuthManager) {
+                return AuthManager.isUserAuthenticated();
+            }
+            
+            // Fallback: check localStorage directly
+            const authData = localStorage.getItem('physicianDashboardAuth');
+            if (authData) {
+                const parsed = JSON.parse(authData);
+                const now = new Date().getTime();
+                const expiration = new Date(parsed.expiresAt).getTime();
+                return now < expiration;
+            }
+            
+            return false;
+        } catch (error) {
+            console.error('Error checking authentication:', error);
+            return false;
+        }
+    },
+    
+    /**
+     * Redirect to login page
+     */
+    redirectToLogin() {
+        Utils.logEvent('Redirecting to login - user not authenticated');
+        window.location.href = 'login.html';
+    },
+    
+    /**
+     * Update user interface with user information
+     */
+    updateUserInterface() {
+        try {
+            const currentUser = AuthManager.getCurrentUser();
+            if (!currentUser) return;
+            
+            // Update doctor name in header
+            const doctorNameElements = document.querySelectorAll('.header-info div:first-child');
+            doctorNameElements.forEach(element => {
+                if (element && element.textContent.includes('Dr.')) {
+                    element.textContent = AuthManager.getUserDisplayName();
+                }
+            });
+            
+            // Add logout functionality to header
+            this.addLogoutButton();
+            
+            Utils.logEvent('User interface updated', { userId: currentUser.id });
+            
+        } catch (error) {
+            console.error('Error updating user interface:', error);
+        }
+    },
+    
+    /**
+     * Add logout button to header
+     */
+    addLogoutButton() {
+        const headerInfo = document.querySelector('.header-info');
+        if (headerInfo && !headerInfo.querySelector('.logout-btn')) {
+            const logoutBtn = document.createElement('button');
+            logoutBtn.className = 'logout-btn';
+            logoutBtn.innerHTML = '🚪 Logout';
+            logoutBtn.style.cssText = `
+                background: var(--danger-gradient);
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 6px;
+                font-size: 12px;
+                cursor: pointer;
+                margin-top: 8px;
+                transition: all 0.3s ease;
+            `;
+            
+            logoutBtn.addEventListener('click', () => this.handleLogout());
+            logoutBtn.addEventListener('mouseenter', () => {
+                logoutBtn.style.transform = 'translateY(-1px)';
+                logoutBtn.style.boxShadow = '0 4px 8px rgba(231, 76, 60, 0.3)';
+            });
+            logoutBtn.addEventListener('mouseleave', () => {
+                logoutBtn.style.transform = 'translateY(0)';
+                logoutBtn.style.boxShadow = 'none';
+            });
+            
+            headerInfo.appendChild(logoutBtn);
+        }
+    },
+    
+    /**
+     * Handle user logout
+     */
+    async handleLogout() {
+        const confirmed = await Utils.showConfirm(
+            'Are you sure you want to logout?',
+            'Confirm Logout'
+        );
+        
+        if (confirmed) {
+            // Clear application state
+            this.saveApplicationState();
+            
+            // Logout through AuthManager
+            if (AuthManager) {
+                AuthManager.logout(true);
+            } else {
+                // Fallback logout
+                localStorage.removeItem('physicianDashboardAuth');
+                localStorage.removeItem('physicianDashboardRemember');
+                window.location.href = 'login.html';
+            }
         }
     },
     
@@ -173,6 +307,12 @@ const App = {
                     requiredModules.forEach(name => {
                         this.modules[name] = window[name];
                     });
+                    
+                    // Add AuthManager if available
+                    if (window.AuthManager) {
+                        this.modules.AuthManager = window.AuthManager;
+                    }
+                    
                     resolve();
                 } else if (elapsed >= maxWaitTime) {
                     // Timeout
@@ -214,6 +354,11 @@ const App = {
                 Utils.logEvent('Application hidden');
             } else {
                 Utils.logEvent('Application visible');
+                // Check authentication when returning to tab
+                if (!AuthManager.isUserAuthenticated()) {
+                    this.redirectToLogin();
+                    return;
+                }
                 // Refresh data when returning to tab
                 if (this.currentTab === 'dashboard') {
                     DashboardManager.updateStats();
@@ -240,7 +385,46 @@ const App = {
             Utils.logEvent('Application offline');
         });
         
+        // Session timeout warning
+        this.setupSessionTimeoutWarning();
+        
         Utils.logEvent('Global events bound');
+    },
+    
+    /**
+     * Setup session timeout warning
+     */
+    setupSessionTimeoutWarning() {
+        // Check session validity every 5 minutes
+        setInterval(() => {
+            if (!AuthManager.isUserAuthenticated()) {
+                Utils.showNotification('Your session has expired. Please log in again.', 'warning');
+                setTimeout(() => {
+                    this.redirectToLogin();
+                }, 3000);
+            }
+        }, 5 * 60 * 1000); // 5 minutes
+        
+        // Warn user 10 minutes before session expires
+        setInterval(() => {
+            const authData = localStorage.getItem('physicianDashboardAuth');
+            if (authData) {
+                const parsed = JSON.parse(authData);
+                const expirationTime = new Date(parsed.expiresAt).getTime();
+                const currentTime = new Date().getTime();
+                const timeUntilExpiration = expirationTime - currentTime;
+                
+                // Warn if less than 10 minutes remaining
+                if (timeUntilExpiration > 0 && timeUntilExpiration <= 10 * 60 * 1000) {
+                    const minutesRemaining = Math.floor(timeUntilExpiration / 60000);
+                    Utils.showNotification(
+                        `Your session will expire in ${minutesRemaining} minute${minutesRemaining > 1 ? 's' : ''}. Please save your work.`,
+                        'warning',
+                        5000
+                    );
+                }
+            }
+        }, 2 * 60 * 1000); // Check every 2 minutes
     },
     
     /**
@@ -291,6 +475,11 @@ const App = {
                         DashboardManager.refreshDashboard();
                     }
                     break;
+                case 'l':
+                    // Ctrl+L for logout
+                    event.preventDefault();
+                    this.handleLogout();
+                    break;
             }
         }
         
@@ -317,6 +506,12 @@ const App = {
      * @param {string} tabName - Tab name to switch to
      */
     switchTab(tabName) {
+        // Check authentication before allowing tab switch (only if AuthManager is available)
+        if (window.AuthManager && !AuthManager.isUserAuthenticated()) {
+            this.redirectToLogin();
+            return;
+        }
+        
         // Hide all tab contents
         const tabContents = document.querySelectorAll('.tab-content');
         tabContents.forEach(content => content.classList.remove('active'));
@@ -331,6 +526,8 @@ const App = {
         
         if (selectedTab) {
             selectedTab.classList.add('active');
+            // Add fade-in animation
+            selectedTab.style.animation = 'fadeIn 0.3s ease-in';
         }
         
         if (selectedButton) {
@@ -356,18 +553,20 @@ const App = {
     handleTabSwitch(tabName) {
         switch (tabName) {
             case 'dashboard':
-                DashboardManager.updateStats();
-                DashboardManager.updateRecentActivity();
+                if (window.DashboardManager) {
+                    DashboardManager.updateStats();
+                    DashboardManager.updateRecentActivity();
+                }
                 break;
                 
             case 'examinations':
-                if (ExaminationManager && PatientManager.selectedPatientId) {
+                if (window.ExaminationManager && window.PatientManager && PatientManager.selectedPatientId) {
                     ExaminationManager.updateForSelectedPatient(PatientManager.selectedPatientId);
                 }
                 break;
                 
             case 'files':
-                if (FileManager && PatientManager.selectedPatientId) {
+                if (window.FileManager && window.PatientManager && PatientManager.selectedPatientId) {
                     FileManager.updateForSelectedPatient(PatientManager.selectedPatientId);
                 }
                 break;
@@ -379,11 +578,13 @@ const App = {
      */
     saveApplicationState() {
         try {
+            const currentUser = AuthManager.getCurrentUser();
             const state = {
                 currentTab: this.currentTab,
                 selectedPatientId: PatientManager.selectedPatientId,
                 timestamp: new Date().toISOString(),
-                version: this.version
+                version: this.version,
+                userId: currentUser ? currentUser.id : null
             };
             
             localStorage.setItem('physicianDashboardState', JSON.stringify(state));
@@ -400,9 +601,12 @@ const App = {
             const savedState = localStorage.getItem('physicianDashboardState');
             if (savedState) {
                 const state = JSON.parse(savedState);
+                const currentUser = AuthManager.getCurrentUser();
                 
-                // Check if state is from the same version
-                if (state.version === this.version) {
+                // Check if state is from the same version and user
+                if (state.version === this.version && 
+                    state.userId === (currentUser ? currentUser.id : null)) {
+                    
                     // Restore tab
                     if (state.currentTab && state.currentTab !== 'dashboard') {
                         setTimeout(() => {
@@ -430,17 +634,21 @@ const App = {
      */
     checkFirstTimeUser() {
         try {
-            const isFirstTime = !localStorage.getItem('physicianDashboardFirstVisit');
+            const currentUser = AuthManager.getCurrentUser();
+            if (!currentUser) return;
+            
+            const firstVisitKey = `physicianDashboardFirstVisit_${currentUser.id}`;
+            const isFirstTime = !localStorage.getItem(firstVisitKey);
             
             if (isFirstTime) {
-                localStorage.setItem('physicianDashboardFirstVisit', new Date().toISOString());
+                localStorage.setItem(firstVisitKey, new Date().toISOString());
                 
                 // Show welcome message
                 setTimeout(() => {
                     this.showWelcomeMessage();
                 }, 1000);
                 
-                Utils.logEvent('First time user detected');
+                Utils.logEvent('First time user detected', { userId: currentUser.id });
             }
         } catch (error) {
             console.warn('Failed to check first-time user:', error);
@@ -451,7 +659,8 @@ const App = {
      * Show welcome message for new users
      */
     showWelcomeMessage() {
-        const message = `Welcome to the Physician Dashboard!\n\nQuick tips:\n• Use Ctrl+1-4 to switch between tabs\n• Ctrl+N to add a new patient\n• Ctrl+F to focus search\n• Select a patient to add examinations and files`;
+        const userName = AuthManager.getUserDisplayName();
+        const message = `Welcome to the Physician Dashboard, ${userName}!\n\nQuick tips:\n• Use Ctrl+1-4 to switch between tabs\n• Ctrl+N to add a new patient\n• Ctrl+F to focus search\n• Ctrl+L to logout\n• Select a patient to add examinations and files`;
         
         Utils.showNotification(message, 'info', 8000);
     },
@@ -462,6 +671,15 @@ const App = {
      */
     handleInitializationError(error) {
         console.error('Application initialization failed:', error);
+        
+        // Check if it's an authentication error
+        if (error.message.includes('authentication') || error.message.includes('auth')) {
+            Utils.showNotification('Authentication error. Please log in again.', 'error');
+            setTimeout(() => {
+                this.redirectToLogin();
+            }, 2000);
+            return;
+        }
         
         // Show error message to user
         const errorHtml = `
@@ -481,10 +699,10 @@ const App = {
                         background: #2c3e50; color: white; border: none; 
                         padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px;
                     ">Reload Application</button>
-                    <button onclick="this.parentElement.parentElement.remove()" style="
+                    <button onclick="window.location.href='login.html'" style="
                         background: transparent; color: white; border: 1px solid white; 
                         padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px;
-                    ">Dismiss</button>
+                    ">Return to Login</button>
                 </div>
             </div>
         `;
@@ -496,11 +714,18 @@ const App = {
      * @returns {Object} Application information
      */
     getAppInfo() {
+        const currentUser = AuthManager.getCurrentUser();
         return {
             name: APP_CONFIG.name,
             version: this.version,
             isInitialized: this.isInitialized,
             currentTab: this.currentTab,
+            isAuthenticated: AuthManager.isUserAuthenticated(),
+            currentUser: currentUser ? {
+                id: currentUser.id,
+                name: AuthManager.getUserDisplayName(),
+                email: currentUser.email
+            } : null,
             browser: Utils.getBrowserInfo(),
             device: Utils.getDeviceInfo(),
             performance: window.performance ? {
@@ -531,7 +756,10 @@ window.switchTab = (tabName) => App.switchTab(tabName);
 
 // Initialize application when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    App.init();
+    // Only initialize if not on login page
+    if (!window.location.pathname.includes('login.html')) {
+        App.init();
+    }
 });
 
 // Cleanup on page unload

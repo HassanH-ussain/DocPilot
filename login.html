@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Physician Dashboard</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/auth.css">
+</head>
+<body class="auth-body">
+    <div class="auth-container">
+        <!-- Login Form -->
+        <div class="auth-card" id="loginCard">
+            <div class="auth-header">
+                <div class="logo">
+                    <span class="logo-icon">🏥</span>
+                    <h1>Physician Dashboard</h1>
+                </div>
+                <p class="auth-subtitle">Sign in to your account</p>
+            </div>
+            
+            <form class="auth-form" id="loginForm" onsubmit="AuthManager.handleLogin(event)">
+                <div class="form-group">
+                    <label for="loginEmail">Email Address</label>
+                    <input 
+                        type="email" 
+                        id="loginEmail" 
+                        name="email" 
+                        required 
+                        autocomplete="email"
+                        placeholder="Enter your email"
+                    >
+                    <div class="field-error" id="loginEmailError"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <div class="password-input-container">
+                        <input 
+                            type="password" 
+                            id="loginPassword" 
+                            name="password" 
+                            required 
+                            autocomplete="current-password"
+                            placeholder="Enter your password"
+                        >
+                        <button 
+                            type="button" 
+                            class="password-toggle" 
+                            onclick="AuthManager.togglePasswordVisibility('loginPassword')"
+                            aria-label="Toggle password visibility"
+                        >
+                            👁️
+                        </button>
+                    </div>
+                    <div class="field-error" id="loginPasswordError"></div>
+                </div>
+                
+                <div class="form-options">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="rememberMe" name="rememberMe">
+                        <span class="checkmark"></span>
+                        Remember me
+                    </label>
+                    
+                    <a href="#" class="forgot-password-link" onclick="AuthManager.showForgotPassword()">
+                        Forgot password?
+                    </a>
+                </div>
+                
+                <button type="submit" class="btn auth-btn" id="loginBtn">
+                    <span class="btn-text">Sign In</span>
+                    <span class="btn-loader" style="display: none;">🔄</span>
+                </button>
+            </form>
+            
+            <div class="auth-footer">
+                <p>Don't have an account? 
+                    <a href="#" onclick="AuthManager.showRegister()">Sign up here</a>
+                </p>
+            </div>
+        </div>
+        
+        <!-- Registration Form -->
+        <div class="auth-card" id="registerCard" style="display: none;">
+            <div class="auth-header">
+                <div class="logo">
+                    <span class="logo-icon">🏥</span>
+                    <h1>Physician Dashboard</h1>
+                </div>
+                <p class="auth-subtitle">Create your physician account</p>
+            </div>
+            
+            <form class="auth-form" id="registerForm" onsubmit="AuthManager.handleRegister(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="registerFirstName">First Name</label>
+                        <input 
+                            type="text" 
+                            id="registerFirstName" 
+                            name="firstName" 
+                            required 
+                            placeholder="First name"
+                        >
+                        <div class="field-error" id="registerFirstNameError"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="registerLastName">Last Name</label>
+                        <input 
+                            type="text" 
+                            id="registerLastName" 
+                            name="lastName" 
+                            required 
+                            placeholder="Last name"
+                        >
+                        <div class="field-error" id="registerLastNameError"></div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="registerEmail">Email Address</label>
+                    <input 
+                        type="email" 
+                        id="registerEmail" 
+                        name="email" 
+                        required 
+                        autocomplete="email"
+                        placeholder="Enter your email"
+                    >
+                    <div class="field-error" id="registerEmailError"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="registerLicenseNumber">Medical License Number</label>
+                    <input 
+                        type="text" 
+                        id="registerLicenseNumber" 
+                        name="licenseNumber" 
+                        required 
+                        placeholder="Enter your medical license number"
+                    >
+                    <div class="field-error" id="registerLicenseNumberError"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="registerSpecialization">Specialization</label>
+                    <select id="registerSpecialization" name="specialization" required>
+                        <option value="">Select your specialization</option>
+                        <option value="internal-medicine">Internal Medicine</option>
+                        <option value="family-medicine">Family Medicine</option>
+                        <option value="cardiology">Cardiology</option>
+                        <option value="pulmonology">Pulmonology</option>
+                        <option value="neurology">Neurology</option>
+                        <option value="psychiatry">Psychiatry</option>
+                        <option value="dermatology">Dermatology</option>
+                        <option value="orthopedics">Orthopedics</option>
+                        <option value="pediatrics">Pediatrics</option>
+                        <option value="emergency-medicine">Emergency Medicine</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <div class="field-error" id="registerSpecializationError"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="registerPassword">Password</label>
+                    <div class="password-input-container">
+                        <input 
+                            type="password" 
+                            id="registerPassword" 
+                            name="password" 
+                            required 
+                            autocomplete="new-password"
+                            placeholder="Create a password"
+                        >
+                        <button 
+                            type="button" 
+                            class="password-toggle" 
+                            onclick="AuthManager.togglePasswordVisibility('registerPassword')"
+                            aria-label="Toggle password visibility"
+                        >
+                            👁️
+                        </button>
+                    </div>
+                    <div class="password-strength" id="passwordStrength"></div>
+                    <div class="field-error" id="registerPasswordError"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="registerConfirmPassword">Confirm Password</label>
+                    <div class="password-input-container">
+                        <input 
+                            type="password" 
+                            id="registerConfirmPassword" 
+                            name="confirmPassword" 
+                            required 
+                            autocomplete="new-password"
+                            placeholder="Confirm your password"
+                        >
+                        <button 
+                            type="button" 
+                            class="password-toggle" 
+                            onclick="AuthManager.togglePasswordVisibility('registerConfirmPassword')"
+                            aria-label="Toggle password visibility"
+                        >
+                            👁️
+                        </button>
+                    </div>
+                    <div class="field-error" id="registerConfirmPasswordError"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="acceptTerms" name="acceptTerms" required>
+                        <span class="checkmark"></span>
+                        I agree to the <a href="#" target="_blank">Terms of Service</a> and 
+                        <a href="#" target="_blank">Privacy Policy</a>
+                    </label>
+                    <div class="field-error" id="acceptTermsError"></div>
+                </div>
+                
+                <button type="submit" class="btn auth-btn" id="registerBtn">
+                    <span class="btn-text">Create Account</span>
+                    <span class="btn-loader" style="display: none;">🔄</span>
+                </button>
+            </form>
+            
+            <div class="auth-footer">
+                <p>Already have an account? 
+                    <a href="#" onclick="AuthManager.showLogin()">Sign in here</a>
+                </p>
+            </div>
+        </div>
+        
+        <!-- Forgot Password Form -->
+        <div class="auth-card" id="forgotPasswordCard" style="display: none;">
+            <div class="auth-header">
+                <div class="logo">
+                    <span class="logo-icon">🏥</span>
+                    <h1>Reset Password</h1>
+                </div>
+                <p class="auth-subtitle">Enter your email to receive reset instructions</p>
+            </div>
+            
+            <form class="auth-form" id="forgotPasswordForm" onsubmit="AuthManager.handleForgotPassword(event)">
+                <div class="form-group">
+                    <label for="forgotEmail">Email Address</label>
+                    <input 
+                        type="email" 
+                        id="forgotEmail" 
+                        name="email" 
+                        required 
+                        autocomplete="email"
+                        placeholder="Enter your email address"
+                    >
+                    <div class="field-error" id="forgotEmailError"></div>
+                </div>
+                
+                <button type="submit" class="btn auth-btn" id="forgotPasswordBtn">
+                    <span class="btn-text">Send Reset Link</span>
+                    <span class="btn-loader" style="display: none;">🔄</span>
+                </button>
+            </form>
+            
+            <div class="auth-footer">
+                <p>Remember your password? 
+                    <a href="#" onclick="AuthManager.showLogin()">Sign in here</a>
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Demo Credentials Info -->
+    <div class="demo-info">
+        <h3>Demo Credentials</h3>
+        <p><strong>Email:</strong> demo@physician.com</p>
+        <p><strong>Password:</strong> demo123</p>
+        <small>Use these credentials to test the application</small>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>
